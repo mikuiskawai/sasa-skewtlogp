@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SASA 전천 모니터링 시스템 – 단열선도</title>
+    <link rel="icon" type="image/png" href="images/logo.png">
+
+    <style>
+        @font-face {
+            font-family: 'SBAggroB';
+            src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2108@1.1/SBAggroB.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'SBAggroB', sans-serif;
+            color: white;
+            background-color: #000000;
+            overflow-x: hidden;
+        }
+
+        /* 헤더 영역 (이미지 + 타이틀 + 시계) */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 30vh;
+            background: url('images/back_rogo.jpg') center center / cover no-repeat;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 8vh;
+            text-align: center;
+            transition: height 0.3s ease, padding-top 0.3s ease;
+            z-index: 1000;
+        }
+
+        .header.shrink {
+            height: 80px;
+            padding-top: 8px;
+        }
+
+        .header-title {
+            font-size: clamp(24px, 8vw, 50px);
+            color: white;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.7);
+            margin: 0;
+            transition: font-size 0.3s ease, transform 0.3s ease;
+        }
+
+        .header.shrink .header-title {
+            font-size: 30px;
+            transform: translateY(5px);
+        }
+
+        .header-subtitle {
+            font-size: clamp(16px, 4vw, 24px);
+            color: white;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+            transition: opacity 0.3s ease;
+        }
+
+        .header.shrink .header-subtitle {
+            opacity: 0;
+        }
+
+        .header-time {
+            margin-top: -10px;
+            transition: transform 0.3s ease, margin-top 0.3s ease;
+        }
+
+        .header-time iframe {
+            width: 261px;
+            height: 29px;
+            border: none;
+            filter: invert(1);
+        }
+
+        .header.shrink .header-time {
+            transform: scale(0.8);
+            margin-top: -50px;
+        }
+
+        /* 메인 콘텐츠 영역 */
+        .content {
+            margin-top: 50vh; /* 헤더 아래에서 시작 */
+            padding: 20px;
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr);
+            gap: 30px;
+            align-items: start;
+            justify-content: center;
+        }
+
+        .card {
+            background-color: rgba(255, 255, 255, 0.168);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 900px;
+            margin: 0 auto;
+            box-sizing: border-box;
+        }
+
+        h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            font-size: 20px;
+        }
+
+        img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 5px;
+            background: #020617;
+        }
+
+        .source {
+            font-size: 12px;
+            color: #cccccc;
+            margin-top: 10px;
+            word-break: break-word;
+            line-height: 1.4;
+        }
+
+        /* 버튼 스타일 (단열선도 새로고침) */
+        .btn-refresh {
+            margin-top: 12px;
+            padding: 8px 18px;
+            border-radius: 999px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-family: 'SBAggroB', sans-serif;
+            background: #22c55e;
+            color: #022c22;
+            font-weight: 600;
+            transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.15s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+        }
+
+        .btn-refresh:hover {
+            filter: brightness(1.08);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.45);
+            transform: translateY(-1px);
+        }
+
+        .btn-refresh:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        }
+
+        footer {
+            text-align: center;
+            color: white;
+            font-size: 14px;
+            margin-top: 30px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                height: 25vh;
+                padding-top: 6vh;
+            }
+
+            .content {
+                margin-top: 40vh;
+                padding: 10px;
+                gap: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header {
+                height: 20vh;
+                padding-top: 5vh;
+            }
+
+            .header-time iframe {
+                width: 200px;
+                height: 24px;
+            }
+
+            .content {
+                margin-top: 35vh;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<div class="header" id="header">
+    <div class="header-title">SASA 전천 모니터링 시스템</div>
+    <div class="header-subtitle">Upper-Air Skew-T Log-P Diagram</div>
+    <div class="header-time">
+        <iframe 
+            src="https://free.timeanddate.com/clock/i9x2xfdm/tlkr47/fn2/fs19/tct/pct/tt0/tw0/tm3/td2/th1/ta1/tb2"
+            frameborder="0"
+            allowtransparency="true"
+            style="filter: invert(1);">
+        </iframe>
+    </div>
+</div>
+
+<!-- 메인 콘텐츠: 단열선도 카드 하나 -->
+<div class="content">
+    <div class="card">
+        <h3>상층 관측 단열선도 (Skew-T Log-P)</h3>
+
+        <!-- Flask에서 제공하는 /skewt.png 사용 -->
+        <img id="skewt-img" src="/skewt.png" alt="Skew-T Log-P Diagram">
+
+        <button class="btn-refresh" type="button" onclick="reloadSkewT()">
+            🔄 최신 관측으로 다시 불러오기
+        </button>
+
+        <p class="source">
+            · 자료 출처: 기상청 상층관측(ZONDE) API 기반 자동 생성 단열선도입니다.<br>
+            · 상단 시각은 로컬 시간(세종시 기준)이며, 실제 관측 시각과 수 분 차이가 있을 수 있습니다.<br>
+            · 브라우저 캐시를 피하기 위해 새로고침 시 매번 고유한 쿼리 파라미터를 붙여 호출합니다.
+        </p>
+    </div>
+</div>
+
+<footer>
+    made by 여은수(10th), 심규서(10th), 이준규(10th)
+</footer>
+
+<script>
+    // 에러 로깅 (디버깅용)
+    window.onerror = (msg, src, line, col, err) => {
+        console.error('[ERROR]', msg, 'at', src, line + ':' + col, err || '');
+    };
+
+    // 헤더 스크롤 효과
+    const header = document.getElementById('header');
+    window.addEventListener('scroll', () => {
+        if (window.scrollY > 100) header.classList.add('shrink');
+        else header.classList.remove('shrink');
+    });
+    window.addEventListener('load', () => window.scrollTo(0, 0));
+
+    // 단열선도 새로고침 (캐시 방지용 timestamp 쿼리)
+    function reloadSkewT() {
+        const img = document.getElementById('skewt-img');
+        if (!img) return;
+        const base = img.src.split('?')[0];   // 기존 쿼리 날리고
+        const ts   = Date.now();             // 유니크한 타임스탬프
+        img.src = base + '?v=' + ts;
+    }
+</script>
+
+</body>
+</html>
