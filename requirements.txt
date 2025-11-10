@@ -1,4 +1,4 @@
-Flask
+streamlit
 requests
 pandas
 numpy
