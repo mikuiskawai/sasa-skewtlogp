@@ -1,6 +1,5 @@
 import math
 from io import StringIO
-
 from datetime import datetime
 
 import requests
@@ -30,16 +29,12 @@ st.set_page_config(
 # ==========================
 # 1. ZONDE API 키 / URL 설정
 # ==========================
-# 🔐 권장: Streamlit Cloud에서 Secrets에 ZONDE_AUTH_KEY 저장하고 쓰기
-#   - App settings → Secrets → 아래처럼 입력
-#       ZONDE_AUTH_KEY=여기_네_API키
-#
-# 아래 코드는:
-#   1) st.secrets에 키가 있으면 그걸 쓰고
-#   2) 없으면 "YOUR_AUTH_KEY_HERE"라는 더미 문자열을 쓴다.
-ZONDE_AUTH_KEY = st.secrets.get("ZONDE_AUTH_KEY", "YOUR_AUTH_KEY_HERE")
+# 🔐 강력 추천: Streamlit Cloud → Secrets 에
+#   ZONDE_AUTH_KEY="여기_네_API키"
+#   이렇게 넣어두고, 코드에서는 st.secrets 로 읽기
+ZONDE_AUTH_KEY = st.secrets["ZONDE_AUTH_KEY"]
 
-# ✅ 여기 stn, pa, help 값은 노트북에서 잘 되던 URL이랑 맞추는 게 제일 안전함
+# 노트북에서 잘 되던 URL이랑 동일하게 맞추는 게 제일 안전
 ZONDE_URL = (
     "https://apihub.kma.go.kr/api/typ01/url/upp_temp.php"
     f"?stn=47102&pa=0&help=1&authKey={ZONDE_AUTH_KEY}"
@@ -51,9 +46,8 @@ ZONDE_URL = (
 # ==========================
 def fetch_sounding():
     """
-    KMA ZONDE API에서 상층관측(raw 텍스트) 데이터를 가져와서
+    KMA ZONDE API에서 상층관측(raw 텍스트) 데이터를 가져와
     pandas DataFrame과 (p, t, td, obs_time)을 반환.
-
     실패하면 ValueError를 던진다.
     """
     # --- HTTP 요청 ---
@@ -64,14 +58,18 @@ def fetch_sounding():
 
     # --- HTTP 상태 코드 체크 ---
     if resp.status_code != 200:
-        raise ValueError(f"ZONDE API HTTP 에러: {resp.status_code}")
+        # 에러응답에 설명이 들어 있을 수 있으니 앞부분만 함께 보여주자
+        preview = resp.text[:200]
+        raise ValueError(
+            f"ZONDE API HTTP 에러: {resp.status_code}\n"
+            f"응답 내용 일부: {preview}"
+        )
 
     # --- 인코딩 설정 ---
-    # 기상청 텍스트는 보통 euc-kr
     resp.encoding = "euc-kr"
     text = resp.text
 
-    # --- 응답 내용 대략적인 체크 (인증/에러 메세지) ---
+    # --- 응답 내용 대략 체크 (인증/에러 메시지) ---
     low = text.lower()
     if "auth" in low or "인증" in text:
         raise ValueError("ZONDE API 인증 오류 가능성(authKey 확인 필요).")
@@ -93,10 +91,9 @@ def fetch_sounding():
     except Exception as e:
         raise ValueError("ZONDE 응답 텍스트를 표 형식으로 파싱하지 못했습니다.") from e
 
-    # --- 필수 컬럼의 결측 제거 ---
+    # --- 필수 컬럼 결측 제거 ---
     df = df.dropna(subset=["PA", "TA", "TD"])
 
-    # 👉 여기서 df가 비었는지 먼저 확인
     if df.empty:
         raise ValueError(
             "상층관측 데이터가 비어 있습니다(0행). "
@@ -121,7 +118,6 @@ def fetch_sounding():
     try:
         obs_time = df["datetime"].iloc[0]
     except IndexError as e:
-        # 이론상 여기 올 일은 거의 없지만, 안전하게 한 번 더 방어
         raise ValueError("datetime 컬럼에서 관측 시각을 읽지 못했습니다.") from e
 
     return df, p, t, td, obs_time
@@ -132,8 +128,8 @@ def fetch_sounding():
 # ==========================
 def create_skewt_figure(p, t, td, obs_time):
     """
-    MetPy SkewT로 단열선도를 그리는 함수.
-    반환값(fig)을 Streamlit에서 st.pyplot(fig)으로 표시.
+    MetPy SkewT로 단열선도 그리는 함수.
+    반환 fig를 st.pyplot(fig)으로 표시.
     """
     # 기단(parcel) 온도 프로파일
     prof = mpcalc.parcel_profile(p, t[0], td[0]).to("degC")
@@ -146,7 +142,7 @@ def create_skewt_figure(p, t, td, obs_time):
     skew.plot(p, td, "g", linewidth=1, linestyle="dashed", label="Dewpoint")
     skew.plot(p, prof, "k", linewidth=1, linestyle="dashed", label="Parcel")
 
-    # 배경선 (건조/습윤 단열선, 혼합비선)
+    # 배경선
     skew.plot_dry_adiabats()
     skew.plot_moist_adiabats()
     skew.plot_mixing_lines()
@@ -162,7 +158,7 @@ def create_skewt_figure(p, t, td, obs_time):
         cape_val = math.nan
         cin_val = math.nan
 
-    # 축 / 라벨 설정
+    # 축 / 라벨
     skew.ax.set_ylim(1050, 100)   # hPa
     skew.ax.set_xlim(-40, 40)     # °C
     skew.ax.set_xlabel("Temperature (°C)")
@@ -175,7 +171,7 @@ def create_skewt_figure(p, t, td, obs_time):
     # 범례
     skew.ax.legend(loc="best", fontsize=9)
 
-    # CAPE/CIN 간단 텍스트
+    # CAPE/CIN 텍스트
     text_lines = []
     if not math.isnan(cape_val):
         text_lines.append(f"CAPE: {cape_val:.0f} J/kg")
@@ -205,18 +201,18 @@ st.subheader("상층 관측 단열선도 (Skew-T Log-P, KMA ZONDE)")
 
 st.markdown(
     """
-기상청 ZONDE 상층관측 자료를 이용해, MetPy로 Skew-T Log-P 단열선도를 그립니다.  
+기상청 ZONDE 상층관측 자료를 이용해 MetPy로 Skew-T Log-P 단열선도를 그립니다.  
 CAPE / CIN, 기온 / 이슬점 / 기단(parcel) 프로파일을 한 번에 확인할 수 있습니다.
 """
 )
 
-# 🔄 버튼: 그냥 누르면 페이지 전체가 rerun됨
-if st.button("🔄 최신 관측으로 업데이트"):
-    st.experimental_rerun()
+# 버튼은 "눌리면 rerun" 역할만 한다. (실제로 아무것도 안 해도 됨)
+refresh_clicked = st.button("🔄 최신 관측으로 다시 그리기")
 
-# 실제 데이터 불러오기 + 그림 그리기
 with st.spinner("기상청 상층관측 자료를 불러오는 중입니다..."):
     try:
+        # 버튼을 눌렀든 안 눌렀든, 이 블록은 매번 실행된다.
+        # (Streamlit은 사용자 인터랙션마다 전체 스크립트를 다시 실행하니까)
         df, p, t, td, obs_time = fetch_sounding()
         fig = create_skewt_figure(p, t, td, obs_time)
         st.pyplot(fig)
@@ -230,5 +226,4 @@ with st.spinner("기상청 상층관측 자료를 불러오는 중입니다...")
 
     except Exception as e:
         st.error("데이터를 불러오거나 그리는 중 오류가 발생했습니다.")
-        # 디버깅 위해 상세 에러도 같이 표시 (배포 후에는 빼도 됨)
         st.exception(e)
